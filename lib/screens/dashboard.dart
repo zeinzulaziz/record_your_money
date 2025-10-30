@@ -46,8 +46,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       event: PostgresChangeEvent.all,
       schema: 'public',
       table: 'transactions',
-      // RLS akan membatasi ke row milik user. Filter tambahan optional:
-      filter: uid != null ? PostgresChangeFilter.eq('user_id', uid) : null,
+      // RLS akan membatasi event ke baris yang boleh dilihat user.
       callback: (_) => _refresh(),
     );
     channel.subscribe();
