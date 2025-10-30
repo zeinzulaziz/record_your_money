@@ -1,0 +1,42 @@
+---
+alwaysApply: true
+---
+
+fanaloka@Chriss-MacBook-Air record_your_money % flutter run
+Launching lib/main.dart on iPhone 17 Pro in debug mode...
+Running Xcode build...                                                  
+Xcode build done.                                            5.8s
+Failed to build iOS app
+Error output from Xcode build:
+↳
+    ** BUILD FAILED **
+
+
+Xcode's output:
+↳
+    Writing result bundle at path:
+        /var/folders/_w/h9xwtbqj6wxcmjg__bndth2c0000gp/T/flutter_tools.oHoJxK/flutte
+        r_ios_build_temp_dir8MGPHl/temporary_xcresult_bundle
+
+    lib/utils/app_theme.dart:47:18: Error: The argument type 'CardTheme' can't be
+    assigned to the parameter type 'CardThemeData?'.
+     - 'CardTheme' is from 'package:flutter/src/material/card_theme.dart'
+     ('/opt/homebrew/share/flutter/packages/flutter/lib/src/material/card_theme.d
+     art').
+     - 'CardThemeData' is from 'package:flutter/src/material/card_theme.dart'
+     ('/opt/homebrew/share/flutter/packages/flutter/lib/src/material/card_theme.d
+     art').
+          cardTheme: CardTheme(
+                     ^
+    Target kernel_snapshot_program failed: Exception
+    Failed to package /Users/fanaloka/record_your_money.
+    Command PhaseScriptExecution failed with a nonzero exit code
+    note: Run script build phase 'Thin Binary' will be run during every build
+    because the option to run the script phase "Based on dependency analysis" is
+    unchecked. (in target 'Runner' from project 'Runner')
+    note: Run script build phase 'Run Script' will be run during every build
+    because the option to run the script phase "Based on dependency analysis" is
+    unchecked. (in target 'Runner' from project 'Runner')
+
+Could not build the application for the simulator.
+Error launching application on iPhone 17 Pro.
