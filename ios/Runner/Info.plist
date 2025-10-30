@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>Mengambil foto nota untuk OCR.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Merekam suara untuk Speech-to-Text.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Menyimpan gambar jika diperlukan.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Mengakses galeri untuk memilih gambar nota.</string>
 </dict>
 </plist>
