@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 import '../services/storage.dart';
+import '../services/supabase_storage.dart';
 
 class DashboardScreen extends StatefulWidget {
   final List<MoneyTransaction> items;
@@ -11,7 +12,7 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final StorageService _storage = SqliteStorage();
+  final StorageService _storage = SupabaseStorage();
   List<MoneyTransaction> _items = [];
   bool _selecting = false;
   final Set<int> _selectedIds = {};

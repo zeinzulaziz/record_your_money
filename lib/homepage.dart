@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'services/ai_service.dart';
 import 'services/groq_ai_service.dart';
 import 'services/storage.dart';
+import 'services/supabase_storage.dart';
 import 'services/ocr_service.dart';
 import 'services/stt_service.dart';
 import 'screens/dashboard.dart';
@@ -14,7 +15,7 @@ class Homepage extends StatefulWidget {
 class _HomepageState extends State<Homepage> {
   final TextEditingController _controller = TextEditingController();
   final AiService _ai = GroqAiService();
-  final StorageService _storage = SqliteStorage();
+  final StorageService _storage = SupabaseStorage();
   final OcrService _ocr = OcrService();
   final SpeechToTextService _stt = SpeechToTextService();
   bool _busy = false;
@@ -148,6 +149,13 @@ class _HomepageState extends State<Homepage> {
       appBar: AppBar(
         title: const Text('MoneyMind'),
         actions: [
+          IconButton(
+            tooltip: 'Keluar',
+            icon: const Icon(Icons.logout),
+            onPressed: () async {
+              await Supabase.instance.client.auth.signOut();
+            },
+          ),
           IconButton(
             tooltip: 'Test AI',
             icon: const Icon(Icons.smart_toy_outlined),
