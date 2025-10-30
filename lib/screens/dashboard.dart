@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/transaction.dart';
 import '../services/storage.dart';
 import '../services/supabase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
   final List<MoneyTransaction> items;
@@ -16,6 +18,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<MoneyTransaction> _items = [];
   bool _selecting = false;
   final Set<int> _selectedIds = {};
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
@@ -26,11 +29,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _init() async {
     await _storage.init();
     await _refresh();
+    _subscribeRealtime();
   }
 
   Future<void> _refresh() async {
     final list = await _storage.getAll();
     setState(() => _items = list);
+  }
+
+  void _subscribeRealtime() {
+    final client = Supabase.instance.client;
+    final uid = client.auth.currentUser?.id;
+    // Pastikan Realtime aktif untuk tabel 'transactions' di dashboard Supabase.
+    final channel = client.channel('public:transactions');
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: 'transactions',
+      // RLS akan membatasi ke row milik user. Filter tambahan optional:
+      filter: uid != null ? PostgresChangeFilter.eq('user_id', uid) : null,
+      callback: (_) => _refresh(),
+    );
+    channel.subscribe();
+    _channel = channel;
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
   }
 
   void _toggleSelectMode() {
@@ -163,6 +190,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
     final today = DateTime.now();
     final isSameDay = (DateTime a, DateTime b) =>
         a.year == b.year && a.month == b.month && a.day == b.day;
@@ -222,7 +250,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       onChanged: (v) => _toggleSelected(t, v),
                       title: Text('${t.deskripsi} (${t.kategori})'),
                       subtitle: Text('${t.jenisTransaksi} - ${t.tanggal.toIso8601String().substring(0, 10)}'),
-                      secondary: Text('Rp ${t.total}'),
+                      secondary: Text(currency.format(t.total)),
                     );
                   }
                   return ListTile(
@@ -231,6 +259,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        Text(currency.format(t.total)),
+                        const SizedBox(width: 8),
                         IconButton(
                           icon: const Icon(Icons.edit),
                           onPressed: () => _editItem(t),

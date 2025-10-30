@@ -16,15 +16,19 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _signIn() async {
     setState(() => _busy = true);
     try {
+      if (_email.text.trim().isEmpty || _password.text.trim().isEmpty) {
+        throw Exception('Email dan password wajib diisi');
+      }
       await Supabase.instance.client.auth.signInWithPassword(
         email: _email.text.trim(),
         password: _password.text.trim(),
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Login gagal: $e')),
-        );
+        final msg = e.toString().contains('anonymous_provider_disabled')
+            ? 'Provider anonymous dimatikan. Aktifkan Email provider di Supabase dan isi email/password.'
+            : 'Login gagal: $e';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -34,20 +38,23 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _signUp() async {
     setState(() => _busy = true);
     try {
+      if (_email.text.trim().isEmpty || _password.text.trim().isEmpty) {
+        throw Exception('Email dan password wajib diisi');
+      }
       await Supabase.instance.client.auth.signUp(
         email: _email.text.trim(),
         password: _password.text.trim(),
       );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registrasi berhasil, cek email bila perlu verifikasi.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Registrasi berhasil, cek email bila perlu verifikasi.')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registrasi gagal: $e')),
-        );
+        final msg = e.toString().contains('anonymous_provider_disabled')
+            ? 'Provider anonymous dimatikan. Aktifkan Email provider di Supabase dan isi email/password.'
+            : 'Registrasi gagal: $e';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       }
     } finally {
       if (mounted) setState(() => _busy = false);

@@ -18,12 +18,21 @@ class SupabaseStorage implements StorageService {
   Future<List<MoneyTransaction>> getAll() async {
     final client = Supabase.instance.client;
     final uid = client.auth.currentUser?.id;
-    final query = client
-        .from(_table)
-        .select()
-        .order('tanggal', ascending: false)
-        .order('id', ascending: false);
-    final data = uid == null ? await query : await query.eq('user_id', uid);
+    dynamic data;
+    if (uid == null) {
+      data = await client
+          .from(_table)
+          .select()
+          .order('tanggal', ascending: false)
+          .order('id', ascending: false);
+    } else {
+      data = await client
+          .from(_table)
+          .select()
+          .eq('user_id', uid)
+          .order('tanggal', ascending: false)
+          .order('id', ascending: false);
+    }
     return (data as List)
         .map((e) => MoneyTransaction.fromMap(Map<String, dynamic>.from(e as Map)))
         .toList(growable: false);
@@ -57,7 +66,7 @@ class SupabaseStorage implements StorageService {
     final client = Supabase.instance.client;
     final map = item.toMap();
     map.remove('id');
-    var q = client.from(_table).update(map).eq('id', item.id);
+    var q = client.from(_table).update(map).eq('id', item.id!);
     final uid = client.auth.currentUser?.id;
     if (uid != null) q = q.eq('user_id', uid);
     await q;

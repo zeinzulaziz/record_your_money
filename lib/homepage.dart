@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'services/ai_service.dart';
 import 'services/groq_ai_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'services/storage.dart';
 import 'services/supabase_storage.dart';
 import 'services/ocr_service.dart';
