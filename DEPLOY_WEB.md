@@ -31,7 +31,13 @@ Jika Anda ingin deploy **cepat tanpa setup apapun**:
 **Untuk GitHub Pages khususnya:**
 - ✅ Sudah punya GitHub repo: Sangat cocok!
 - ✅ File `.github/workflows/deploy.yml` sudah disiapkan
-- ⚠️ Perlu setup GitHub Actions di Settings → Pages
+- ⚠️ **PENTING:** Setelah first push, wajib setting di GitHub repo:
+  1. Buka: https://github.com/zeinzulaziz/record_your_money/settings/pages
+  2. Settings → Pages
+  3. Source: **"Deploy from a branch"**
+  4. Branch: pilih **`gh-pages`** dan folder **`/ (root)`**
+  5. Save
+  6. Tunggu Actions selesai (cek di tab "Actions")
 - ⚠️ Bandwidth limited 100GB/bulan (cukup untuk traffic normal)
 - ✅ URL: `https://zeinzulaziz.github.io/record_your_money/`
 
@@ -118,63 +124,32 @@ Atau gunakan web UI: https://vercel.com/new
 ✅ URL custom domain supported
 
 **Kekurangan:**
-⚠️ Perlu manual push `build/web` tiap update
+⚠️ Setup awal sedikit lebih kompleks
 ⚠️ Bandwidth terbatas (100 GB/bulan)
-⚠️ Build limit 10x/jam (bisa diatasi dengan GitHub Actions)
-⚠️ Tidak ada auto-deploy langsung dari main branch
+⚠️ Build limit 10x/jam (tapi tidak masalah untuk project kecil)
+⚠️ Perlu konfigurasi GitHub Actions
 
-1. **Build aplikasi:**
-```bash
-flutter build web --release --base-href="/record_your_money/"
-```
+**Cara Setup Auto-Deploy:**
 
-2. **Push ke GitHub:**
-```bash
-cd build/web
-git init
-git add .
-git commit -m "Deploy web"
-git remote add origin https://github.com/zeinzulaziz/record_your_money.git
-git branch -M gh-pages
-git push -u origin gh-pages
-```
+✅ File `.github/workflows/deploy.yml` sudah ada di repo!
 
-3. **Aktifkan GitHub Pages:**
-- Buka Settings di GitHub repo
-- Pilih Pages
-- Source: `gh-pages` branch
-- Folder: `/ (root)`
+**Sekarang lakukan ini:**
 
-4. **URL akan tersedia di:**
-`https://zeinzulaziz.github.io/record_your_money/`
+1. **Push code ke GitHub** (sudah dilakukan)
+2. **Setup GitHub Pages source:**
+   - Buka: https://github.com/zeinzulaziz/record_your_money/settings/pages
+   - Source: pilih **"Deploy from a branch"**
+   - Branch: pilih **`gh-pages`** dan folder **`/ (root)`**
+   - Klik **Save**
+3. **Cek GitHub Actions:**
+   - Buka: https://github.com/zeinzulaziz/record_your_money/actions
+   - Tunggu workflow "Deploy Flutter Web to GitHub Pages" selesai (sekitar 2-3 menit)
+   - Icon hijau = berhasil ✅
+4. **Refresh halaman web:**
+   - https://zeinzulaziz.github.io/record_your_money/
+   - Sekarang aplikasi sudah muncul!
 
-**Tips:** Untuk auto-deploy dari main branch, buat file `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy Flutter Web
-on:
-  push:
-    branches: [ main ]
-permissions:
-  contents: write
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.35.7'
-          channel: 'stable'
-      - run: flutter pub get
-      - run: flutter build web --release --base-href="/record_your_money/"
-      - uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: './build/web'
-```
-
-Dengan ini, setiap push ke `main` akan otomatis deploy ke GitHub Pages!
+**Setelah ini, setiap push ke `main` akan auto-deploy!**
 
 ---
 
