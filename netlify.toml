@@ -1,5 +1,6 @@
 [build]
-  command = "flutter build web --release"
+  # Build is handled by GitHub Actions
+  # command = "flutter build web --release"
   publish = "build/web"
 
 [[plugins]]
