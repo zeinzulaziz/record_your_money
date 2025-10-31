@@ -10,6 +10,12 @@ enum FilterPeriod {
   minggu,
   bulan,
   tahun,
+  custom,
+}
+
+enum FilterMode {
+  quick,
+  custom,
 }
 
 class DashboardScreen extends StatefulWidget {
@@ -27,6 +33,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final Set<int> _selectedIds = {};
   RealtimeChannel? _channel;
   FilterPeriod _selectedFilter = FilterPeriod.hari;
+  FilterMode _filterMode = FilterMode.quick;
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   @override
   void initState() {
@@ -113,27 +122,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
     for (final t in _items) {
       bool include = false;
       
-      switch (_selectedFilter) {
-        case FilterPeriod.hari:
-          include = t.tanggal.year == now.year &&
-                    t.tanggal.month == now.month &&
-                    t.tanggal.day == now.day;
-          break;
-        case FilterPeriod.minggu:
-          // Get Monday of current week (weekday: 1 = Monday, 7 = Sunday)
-          final daysFromMonday = (now.weekday - 1) % 7;
-          final weekStart = DateTime(now.year, now.month, now.day).subtract(Duration(days: daysFromMonday));
-          final weekEnd = weekStart.add(const Duration(days: 6));
-          final txDate = DateTime(t.tanggal.year, t.tanggal.month, t.tanggal.day);
-          include = !txDate.isBefore(weekStart) && !txDate.isAfter(weekEnd);
-          break;
-        case FilterPeriod.bulan:
-          include = t.tanggal.year == now.year &&
-                    t.tanggal.month == now.month;
-          break;
-        case FilterPeriod.tahun:
-          include = t.tanggal.year == now.year;
-          break;
+      // Custom date range filter
+      if (_filterMode == FilterMode.custom && _startDate != null && _endDate != null) {
+        final txDate = DateTime(t.tanggal.year, t.tanggal.month, t.tanggal.day);
+        final start = DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+        final end = DateTime(_endDate!.year, _endDate!.month, _endDate!.day);
+        include = !txDate.isBefore(start) && !txDate.isAfter(end);
+      } else {
+        // Quick filter period
+        switch (_selectedFilter) {
+          case FilterPeriod.hari:
+            include = t.tanggal.year == now.year &&
+                      t.tanggal.month == now.month &&
+                      t.tanggal.day == now.day;
+            break;
+          case FilterPeriod.minggu:
+            // Get Monday of current week (weekday: 1 = Monday, 7 = Sunday)
+            final daysFromMonday = (now.weekday - 1) % 7;
+            final weekStart = DateTime(now.year, now.month, now.day).subtract(Duration(days: daysFromMonday));
+            final weekEnd = weekStart.add(const Duration(days: 6));
+            final txDate = DateTime(t.tanggal.year, t.tanggal.month, t.tanggal.day);
+            include = !txDate.isBefore(weekStart) && !txDate.isAfter(weekEnd);
+            break;
+          case FilterPeriod.bulan:
+            include = t.tanggal.year == now.year &&
+                      t.tanggal.month == now.month;
+            break;
+          case FilterPeriod.tahun:
+            include = t.tanggal.year == now.year;
+            break;
+          case FilterPeriod.custom:
+            include = false;
+            break;
+        }
       }
       
       if (include) {
@@ -145,6 +166,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   String _getFilterLabel() {
+    if (_filterMode == FilterMode.custom && _startDate != null && _endDate != null) {
+      return '${_formatDate(_startDate!)} - ${_formatDate(_endDate!)}';
+    }
     switch (_selectedFilter) {
       case FilterPeriod.hari:
         return 'Hari ini';
@@ -154,7 +178,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return 'Bulan ini';
       case FilterPeriod.tahun:
         return 'Tahun ini';
+      case FilterPeriod.custom:
+        return 'Custom Range';
     }
+  }
+
+  Future<void> _showCustomDateRangePicker() async {
+    final DateTime now = DateTime.now();
+    final DateTime? pickedStart = await showDatePicker(
+      context: context,
+      initialDate: _startDate ?? now.subtract(const Duration(days: 7)),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+      helpText: 'Pilih Tanggal Mulai',
+    );
+    
+    if (pickedStart == null) return;
+    
+    final DateTime? pickedEnd = await showDatePicker(
+      context: context,
+      initialDate: _endDate ?? pickedStart,
+      firstDate: pickedStart,
+      lastDate: DateTime(2100),
+      helpText: 'Pilih Tanggal Akhir',
+    );
+    
+    if (pickedEnd != null) {
+      setState(() {
+        _startDate = pickedStart;
+        _endDate = pickedEnd;
+        _filterMode = FilterMode.custom;
+        _selectedFilter = FilterPeriod.custom;
+      });
+    }
+  }
+
+  void _resetToQuickFilter(FilterPeriod period) {
+    setState(() {
+      _filterMode = FilterMode.quick;
+      _selectedFilter = period;
+      _startDate = null;
+      _endDate = null;
+    });
+  }
+
+  Widget _buildFilterButton(String label, FilterPeriod period, {bool isFirst = false}) {
+    final isSelected = _filterMode == FilterMode.quick && _selectedFilter == period;
+    return GestureDetector(
+      onTap: () => _resetToQuickFilter(period),
+      child: Container(
+        height: 36,
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.surfaceContainerHighest,
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          ),
+          borderRadius: BorderRadius.only(
+            topLeft: isFirst ? const Radius.circular(8) : Radius.zero,
+            bottomLeft: isFirst ? const Radius.circular(8) : Radius.zero,
+            topRight: !isFirst && period == FilterPeriod.tahun ? const Radius.circular(8) : Radius.zero,
+            bottomRight: !isFirst && period == FilterPeriod.tahun ? const Radius.circular(8) : Radius.zero,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: isSelected
+                  ? Theme.of(context).colorScheme.onPrimary
+                  : Theme.of(context).colorScheme.onSurface,
+            ),
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ),
+    );
   }
 
   String _formatDate(DateTime date) {
@@ -295,7 +400,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             // Filter Section
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(12),
@@ -320,38 +425,198 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  ToggleButtons(
-                    isSelected: [
-                      _selectedFilter == FilterPeriod.hari,
-                      _selectedFilter == FilterPeriod.minggu,
-                      _selectedFilter == FilterPeriod.bulan,
-                      _selectedFilter == FilterPeriod.tahun,
-                    ],
-                    onPressed: (int index) {
-                      setState(() {
-                        _selectedFilter = FilterPeriod.values[index];
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    constraints: const BoxConstraints(
-                      minHeight: 40,
-                      minWidth: 60,
-                    ),
-                    textStyle: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    selectedColor: Theme.of(context).colorScheme.onPrimary,
-                    fillColor: Theme.of(context).colorScheme.primary,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    children: const [
-                      Text('Harian'),
-                      Text('Mingguan'),
-                      Text('Bulanan'),
-                      Text('Tahunan'),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildFilterButton(
+                          'Harian',
+                          FilterPeriod.hari,
+                          isFirst: true,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildFilterButton(
+                          'Mingguan',
+                          FilterPeriod.minggu,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildFilterButton(
+                          'Bulanan',
+                          FilterPeriod.bulan,
+                        ),
+                      ),
+                      Expanded(
+                        child: _buildFilterButton(
+                          'Tahunan',
+                          FilterPeriod.tahun,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      SizedBox(
+                        height: 36,
+                        width: 36,
+                        child: IconButton(
+                          onPressed: _showCustomDateRangePicker,
+                          icon: const Icon(Icons.date_range, size: 20),
+                          style: IconButton.styleFrom(
+                            backgroundColor: _filterMode == FilterMode.custom
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.surfaceContainerHighest,
+                            foregroundColor: _filterMode == FilterMode.custom
+                                ? Theme.of(context).colorScheme.onPrimary
+                                : Theme.of(context).colorScheme.onSurface,
+                            padding: EdgeInsets.zero,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(
+                                color: _filterMode == FilterMode.custom
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
+                  if (_filterMode == FilterMode.custom && _startDate != null && _endDate != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 12),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                final DateTime? picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _startDate!,
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime(2100),
+                                  helpText: 'Pilih Tanggal Mulai',
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    _startDate = picked;
+                                    if (_endDate != null && _startDate!.isAfter(_endDate!)) {
+                                      _endDate = _startDate;
+                                    }
+                                  });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Mulai',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatDate(_startDate!),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.arrow_forward,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () async {
+                                final DateTime? picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _endDate!,
+                                  firstDate: _startDate ?? DateTime(2000),
+                                  lastDate: DateTime(2100),
+                                  helpText: 'Pilih Tanggal Akhir',
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    _endDate = picked;
+                                  });
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: Theme.of(context).colorScheme.surface,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Selesai',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _formatDate(_endDate!),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              setState(() {
+                                _filterMode = FilterMode.quick;
+                                _selectedFilter = FilterPeriod.hari;
+                                _startDate = null;
+                                _endDate = null;
+                              });
+                            },
+                            tooltip: 'Reset',
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -477,18 +742,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
                       ),
-                      Expanded(
-                        child: ListView.builder(
+            Expanded(
+              child: ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: filteredTransactions.length,
-                          itemBuilder: (context, index) {
+                itemBuilder: (context, index) {
                             final t = filteredTransactions[index];
-                            if (_selecting) {
+                  if (_selecting) {
                               return Card(
                                 margin: const EdgeInsets.only(bottom: 8),
                                 child: CheckboxListTile(
-                                  value: t.id != null && _selectedIds.contains(t.id),
-                                  onChanged: (v) => _toggleSelected(t, v),
+                      value: t.id != null && _selectedIds.contains(t.id),
+                      onChanged: (v) => _toggleSelected(t, v),
                                   title: Text(
                                     t.deskripsi,
                                     style: const TextStyle(fontWeight: FontWeight.w600),
@@ -605,10 +870,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     ),
                                   ],
                                 ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
                                   crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
+                      children: [
                                     Text(
                                       currency.format(t.total),
                                       style: TextStyle(
@@ -618,23 +883,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                       ),
                                     ),
                                     const SizedBox(width: 4),
-                                    IconButton(
+                        IconButton(
                                       icon: Icon(
                                         Icons.edit_outlined,
                                         size: 18,
                                         color: Theme.of(context).colorScheme.primary,
                                       ),
-                                      onPressed: () => _editItem(t),
+                          onPressed: () => _editItem(t),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(
                                         minWidth: 32,
                                         minHeight: 32,
                                       ),
-                                    ),
-                                  ],
+                        ),
+                      ],
                                 ),
                                 isThreeLine: false,
-                              ),
+                    ),
                   );
                 },
               ),

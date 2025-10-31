@@ -43,6 +43,23 @@ flutter pub get
 flutter run
 ```
 
+### Deploy to Web
+
+Aplikasi ini juga mendukung web platform. Untuk deploy ke web:
+
+1. Build aplikasi untuk web:
+```bash
+flutter build web --release
+```
+
+2. Lihat file `DEPLOY_WEB.md` untuk panduan deploy ke berbagai platform:
+   - Firebase Hosting
+   - Netlify
+   - Vercel
+   - GitHub Pages
+
+**Catatan:** Beberapa fitur mobile (OCR dan Speech-to-Text) tidak tersedia di web, tapi dashboard dan AI parsing tetap berfungsi.
+
 ## Technologies Used
 
 - **Flutter**: Cross-platform mobile development framework

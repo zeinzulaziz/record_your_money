@@ -75,6 +75,13 @@ class _HomepageState extends State<Homepage> {
         _controller.text = text;
       });
       await _parseWithAiAndSave();
+    } catch (e) {
+      debugPrint('Error scanning OCR: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error memindai gambar: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -96,6 +103,13 @@ class _HomepageState extends State<Homepage> {
         _controller.text = text;
       });
       await _parseWithAiAndSave();
+    } catch (e) {
+      debugPrint('Error picking OCR from gallery: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error memilih gambar: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
