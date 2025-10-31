@@ -5,6 +5,13 @@ import '../services/supabase_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
+enum FilterPeriod {
+  hari,
+  minggu,
+  bulan,
+  tahun,
+}
+
 class DashboardScreen extends StatefulWidget {
   final List<MoneyTransaction> items;
   const DashboardScreen({super.key, required this.items});
@@ -19,6 +26,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _selecting = false;
   final Set<int> _selectedIds = {};
   RealtimeChannel? _channel;
+  FilterPeriod _selectedFilter = FilterPeriod.hari;
 
   @override
   void initState() {
@@ -39,7 +47,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _subscribeRealtime() {
     final client = Supabase.instance.client;
-    final uid = client.auth.currentUser?.id;
     // Pastikan Realtime aktif untuk tabel 'transactions' di dashboard Supabase.
     final channel = client.channel('public:transactions');
     channel.onPostgresChanges(
@@ -97,6 +104,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _selecting = false;
       _selectedIds.clear();
     });
+  }
+
+  List<MoneyTransaction> _getFilteredTransactions() {
+    final now = DateTime.now();
+    final filtered = <MoneyTransaction>[];
+    
+    for (final t in _items) {
+      bool include = false;
+      
+      switch (_selectedFilter) {
+        case FilterPeriod.hari:
+          include = t.tanggal.year == now.year &&
+                    t.tanggal.month == now.month &&
+                    t.tanggal.day == now.day;
+          break;
+        case FilterPeriod.minggu:
+          // Get Monday of current week (weekday: 1 = Monday, 7 = Sunday)
+          final daysFromMonday = (now.weekday - 1) % 7;
+          final weekStart = DateTime(now.year, now.month, now.day).subtract(Duration(days: daysFromMonday));
+          final weekEnd = weekStart.add(const Duration(days: 6));
+          final txDate = DateTime(t.tanggal.year, t.tanggal.month, t.tanggal.day);
+          include = !txDate.isBefore(weekStart) && !txDate.isAfter(weekEnd);
+          break;
+        case FilterPeriod.bulan:
+          include = t.tanggal.year == now.year &&
+                    t.tanggal.month == now.month;
+          break;
+        case FilterPeriod.tahun:
+          include = t.tanggal.year == now.year;
+          break;
+      }
+      
+      if (include) {
+        filtered.add(t);
+      }
+    }
+    
+    return filtered;
+  }
+
+  String _getFilterLabel() {
+    switch (_selectedFilter) {
+      case FilterPeriod.hari:
+        return 'Hari ini';
+      case FilterPeriod.minggu:
+        return 'Minggu ini';
+      case FilterPeriod.bulan:
+        return 'Bulan ini';
+      case FilterPeriod.tahun:
+        return 'Tahun ini';
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+      'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+    ];
+    return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]} ${date.year}';
   }
 
   Future<void> _editItem(MoneyTransaction t) async {
@@ -190,13 +256,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-    final today = DateTime.now();
-    final isSameDay = (DateTime a, DateTime b) =>
-        a.year == b.year && a.month == b.month && a.day == b.day;
+    final filteredTransactions = _getFilteredTransactions();
+    
     int outTotal = 0;
     int inTotal = 0;
-    for (final t in _items) {
-      if (!isSameDay(t.tanggal, today)) continue;
+    for (final t in filteredTransactions) {
       if (t.jenisTransaksi == 'pemasukan') {
         inTotal += t.total;
       } else {
@@ -221,57 +285,364 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
-      body: Padding(
+      body: Column(
+        children: [
+          // Fixed Header Section
+          Container(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Hari ini', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _StatCard(label: 'Pemasukan', amount: inTotal, color: Colors.green),
-                const SizedBox(width: 12),
-                _StatCard(label: 'Pengeluaran', amount: outTotal, color: Colors.red),
-              ],
+            // Filter Section
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.filter_alt,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Periode',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ToggleButtons(
+                    isSelected: [
+                      _selectedFilter == FilterPeriod.hari,
+                      _selectedFilter == FilterPeriod.minggu,
+                      _selectedFilter == FilterPeriod.bulan,
+                      _selectedFilter == FilterPeriod.tahun,
+                    ],
+                    onPressed: (int index) {
+                      setState(() {
+                        _selectedFilter = FilterPeriod.values[index];
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    constraints: const BoxConstraints(
+                      minHeight: 40,
+                      minWidth: 60,
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    selectedColor: Theme.of(context).colorScheme.onPrimary,
+                    fillColor: Theme.of(context).colorScheme.primary,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    children: const [
+                      Text('Harian'),
+                      Text('Mingguan'),
+                      Text('Bulanan'),
+                      Text('Tahunan'),
+                    ],
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 16),
-            Text('Ringkasan', style: Theme.of(context).textTheme.titleMedium),
+            
+            // Total Section
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  _getFilterLabel(),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    '${filteredTransactions.length} transaksi',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    label: 'Pemasukan',
+                    amount: inTotal,
+                    color: Colors.green,
+                    icon: Icons.arrow_downward_rounded,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    label: 'Pengeluaran',
+                    amount: outTotal,
+                    color: Colors.red,
+                    icon: Icons.arrow_upward_rounded,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Saldo',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    currency.format(inTotal - outTotal),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: (inTotal - outTotal) >= 0 ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+              ],
+            ),
+          ),
+          
+          // Scrollable Transaction List
             Expanded(
-              child: ListView.builder(
-                itemCount: _items.length,
-                itemBuilder: (context, index) {
-                  final t = _items[index];
-                  if (_selecting) {
-                    return CheckboxListTile(
-                      value: t.id != null && _selectedIds.contains(t.id),
-                      onChanged: (v) => _toggleSelected(t, v),
-                      title: Text('${t.deskripsi} (${t.kategori})'),
-                      subtitle: Text('${t.jenisTransaksi} - ${t.tanggal.toIso8601String().substring(0, 10)}'),
-                      secondary: Text(currency.format(t.total)),
-                    );
-                  }
-                  return ListTile(
-                    title: Text('${t.deskripsi} (${t.kategori})'),
-                    subtitle: Text('${t.jenisTransaksi} - ${t.tanggal.toIso8601String().substring(0, 10)}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
+            child: filteredTransactions.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(currency.format(t.total)),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.edit),
-                          onPressed: () => _editItem(t),
+                        Icon(
+                          Icons.receipt_long_outlined,
+                          size: 64,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Tidak ada transaksi untuk periode ini',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                          ),
                         ),
                       ],
                     ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Ringkasan',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: filteredTransactions.length,
+                          itemBuilder: (context, index) {
+                            final t = filteredTransactions[index];
+                            if (_selecting) {
+                              return Card(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                child: CheckboxListTile(
+                                  value: t.id != null && _selectedIds.contains(t.id),
+                                  onChanged: (v) => _toggleSelected(t, v),
+                                  title: Text(
+                                    t.deskripsi,
+                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const SizedBox(height: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: t.jenisTransaksi == 'pemasukan'
+                                              ? Colors.green.withOpacity(0.1)
+                                              : Colors.red.withOpacity(0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          t.kategori,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: t.jenisTransaksi == 'pemasukan'
+                                                ? Colors.green.shade700
+                                                : Colors.red.shade700,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _formatDate(t.tanggal),
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  secondary: Text(
+                                    currency.format(t.total),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: t.jenisTransaksi == 'pemasukan' ? Colors.green : Colors.red,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: BorderSide(
+                                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                                ),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                leading: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: t.jenisTransaksi == 'pemasukan'
+                                        ? Colors.green.withOpacity(0.1)
+                                        : Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    t.jenisTransaksi == 'pemasukan'
+                                        ? Icons.arrow_downward_rounded
+                                        : Icons.arrow_upward_rounded,
+                                    color: t.jenisTransaksi == 'pemasukan' ? Colors.green : Colors.red,
+                                  ),
+                                ),
+                                title: Text(
+                                  t.deskripsi,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: t.jenisTransaksi == 'pemasukan'
+                                            ? Colors.green.withOpacity(0.1)
+                                            : Colors.red.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        t.kategori,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: t.jenisTransaksi == 'pemasukan'
+                                              ? Colors.green.shade700
+                                              : Colors.red.shade700,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _formatDate(t.tanggal),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      currency.format(t.total),
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: t.jenisTransaksi == 'pemasukan' ? Colors.green : Colors.red,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.edit_outlined,
+                                        size: 18,
+                                        color: Theme.of(context).colorScheme.primary,
+                                      ),
+                                      onPressed: () => _editItem(t),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 32,
+                                        minHeight: 32,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                isThreeLine: false,
+                              ),
                   );
                 },
               ),
-            )
+                      ),
           ],
         ),
+          ),
+        ],
       ),
     );
   }
@@ -281,26 +652,73 @@ class _StatCard extends StatelessWidget {
   final String label;
   final int amount;
   final Color color;
-  const _StatCard({required this.label, required this.amount, required this.color});
+  final IconData icon;
+  const _StatCard({
+    required this.label,
+    required this.amount,
+    required this.color,
+    required this.icon,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(12),
+    final currency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    return Container(
+      padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.2)),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withOpacity(0.15),
+            color.withOpacity(0.08),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text('Rp $amount', style: TextStyle(color: color, fontSize: 18)),
-          ],
-        ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            currency.format(amount),
+            style: TextStyle(
+              color: color,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
       ),
     );
   }
