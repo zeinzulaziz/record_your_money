@@ -20,6 +20,15 @@ jobs:
           channel: 'stable'
           cache: true
       
+      - name: Create secrets file
+        run: |
+          mkdir -p lib
+          cat > lib/secrets.dart << EOF
+          const String kGroqApiKey = '${{ secrets.KGROQ_API_KEY }}';
+          const String kSupabaseUrl = '${{ secrets.KSUPABASE_URL }}';
+          const String kSupabaseAnonKey = '${{ secrets.KSUPABASE_ANON_KEY }}';
+          EOF
+      
       - name: Install dependencies
         run: flutter pub get
       

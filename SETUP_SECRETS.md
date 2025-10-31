@@ -1,9 +1,15 @@
 # 🔑 Setup GitHub Secrets untuk Auto Deploy
 
-## Token & Site ID yang Sudah Ada:
+## Secrets yang Diperlukan:
 
-✅ **NETLIFY_AUTH_TOKEN:** `nfp_RCvTxZwoGDoUrBVkLK2C7T38rfjoTsri7141`
-✅ **NETLIFY_SITE_ID:** `1bad40f2-4067-48b9-bb27-11f4ba1c9ce4`
+### Netlify Secrets:
+- **NETLIFY_AUTH_TOKEN:** `your_netlify_token_here`
+- **NETLIFY_SITE_ID:** `your_netlify_site_id_here`
+
+### App Secrets:
+- **KGROQ_API_KEY:** `your_groq_api_key_here`
+- **KSUPABASE_URL:** `https://your-supabase-url.supabase.co`
+- **KSUPABASE_ANON_KEY:** `your_supabase_anon_key_here`
 
 ---
 
@@ -13,25 +19,38 @@
 
 1. Buka: **https://github.com/zeinzulaziz/record_your_money/settings/secrets/actions**
 
-### Step 2: Add Secret 1 (Auth Token)
+### Step 2: Tambahkan 5 Secrets
 
-1. Klik **"New repository secret"**
-2. Name: `NETLIFY_AUTH_TOKEN`
-3. Secret: `nfp_RCvTxZwoGDoUrBVkLK2C7T38rfjoTsri7141`
-4. Klik **"Add secret"**
+Tambahkan satu per satu, klik **"New repository secret"** untuk setiap secret:
 
-### Step 3: Add Secret 2 (Site ID)
+#### Secret 1: Netlify Auth Token
+- Name: `NETLIFY_AUTH_TOKEN`
+- Secret: (dapatkan dari Netlify dashboard → Site settings → General → Site details → Site ID & Netlify CLI token)
 
-1. Klik **"New repository secret"** lagi
-2. Name: `NETLIFY_SITE_ID`
-3. Secret: `1bad40f2-4067-48b9-bb27-11f4ba1c9ce4`
-4. Klik **"Add secret"**
+#### Secret 2: Netlify Site ID
+- Name: `NETLIFY_SITE_ID`
+- Secret: (dapatkan dari Netlify dashboard → Site settings → General → Site details → Site ID & Netlify CLI token)
 
-### Step 4: Verifikasi
+#### Secret 3: Groq API Key
+- Name: `KGROQ_API_KEY`
+- Secret: (dapatkan dari https://console.groq.com/ → API Keys)
 
-Anda harus punya 2 secrets:
+#### Secret 4: Supabase URL
+- Name: `KSUPABASE_URL`
+- Secret: (dapatkan dari Supabase project → Settings → API → Project URL)
+
+#### Secret 5: Supabase Anon Key
+- Name: `KSUPABASE_ANON_KEY`
+- Secret: (dapatkan dari Supabase project → Settings → API → anon public key)
+
+### Step 3: Verifikasi
+
+Anda harus punya 5 secrets:
 - ✅ NETLIFY_AUTH_TOKEN
 - ✅ NETLIFY_SITE_ID
+- ✅ KGROQ_API_KEY
+- ✅ KSUPABASE_URL
+- ✅ KSUPABASE_ANON_KEY
 
 ---
 
@@ -52,4 +71,3 @@ Cek GitHub Actions:
 
 Setelah sukses, aplikasi akan auto-update di:
 **https://recordyourmoney.netlify.app/** 🎉
-
